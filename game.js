@@ -1,247 +1,222 @@
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 
-// Game variables
-let player;
-let enemies = [];
-let bullets = [];
-let score = 0;
-let wave = 1;
-let gameOver = false;
+console.log("Game canvas and context initialized.");
 
-// Player setup
-const playerSize = 30;
-player = {
-    x: canvas.width / 2 - playerSize / 2,
-    y: canvas.height / 2 - playerSize / 2,
-    width: playerSize,
-    height: playerSize,
-    speed: 5,
-    color: 'yellow'
-};
-
-function drawPlayer() {
-    ctx.fillStyle = player.color;
-    ctx.fillRect(player.x, player.y, player.width, player.height);
-}
-
-// Enemy class
-class Enemy {
-    constructor(x, y, size, speed, color) {
+// Game Objects
+class Projectile {
+    constructor(x, y, target) {
         this.x = x;
         this.y = y;
-        this.width = size;
-        this.height = size;
-        this.speed = speed;
-        this.color = color;
+        this.target = target;
+        this.radius = 5;
+        this.color = 'purple';
+        this.speed = 5;
     }
 
-    draw() {
-        ctx.fillStyle = this.color;
-        ctx.fillRect(this.x, this.y, this.width, this.height);
-    }
+    move() {
+        const dx = this.target.x - this.x;
+        const dy = this.target.y - this.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
 
-    update() {
-        // Move towards player
-        const angle = Math.atan2(player.y - this.y, player.x - this.x);
-        this.x += Math.cos(angle) * this.speed;
-        this.y += Math.sin(angle) * this.speed;
-    }
-}
-
-function spawnWave(waveNumber) {
-    const enemyCount = waveNumber * 2;
-    for (let i = 0; i < enemyCount; i++) {
-        const enemySize = 30;
-        const enemySpeed = 1 + waveNumber * 0.1;
-        const enemyColor = 'green';
-
-        let x, y;
-        if (Math.random() < 0.5) {
-            x = Math.random() < 0.5 ? 0 - enemySize : canvas.width + enemySize;
-            y = Math.random() * canvas.height;
+        if (distance < this.speed) {
+            this.x = this.target.x;
+            this.y = this.target.y;
         } else {
-            x = Math.random() * canvas.width;
-            y = Math.random() < 0.5 ? 0 - enemySize : canvas.height + enemySize;
+            this.x += (dx / distance) * this.speed;
+            this.y += (dy / distance) * this.speed;
         }
-
-        enemies.push(new Enemy(x, y, enemySize, enemySpeed, enemyColor));
-    }
-}
-
-function updateEnemies() {
-    enemies.forEach(enemy => {
-        enemy.update();
-    });
-
-    if (enemies.length === 0) {
-        wave++;
-        spawnWave(wave);
-    }
-}
-
-function drawEnemies() {
-    enemies.forEach(enemy => {
-        enemy.draw();
-    });
-}
-
-// Bullet class
-class Bullet {
-    constructor(x, y, velocityX, velocityY, size, color) {
-        this.x = x;
-        this.y = y;
-        this.velocityX = velocityX;
-        this.velocityY = velocityY;
-        this.width = size;
-        this.height = size;
-        this.color = color;
     }
 
     draw() {
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
         ctx.fillStyle = this.color;
-        ctx.fillRect(this.x, this.y, this.width, this.height);
-    }
-
-    update() {
-        this.x += this.velocityX;
-        this.y += this.velocityY;
+        ctx.fill();
     }
 }
 
-function updateBullets() {
-    for (let i = bullets.length - 1; i >= 0; i--) {
-        const bullet = bullets[i];
-        bullet.update();
+class Tower {
+    constructor(x, y) {
+        this.x = x;
+        this.y = y;
+        this.width = 50;
+        this.height = 50;
+        this.color = 'blue'; // Placeholder for Jotaro
+        this.range = 150;
+        this.projectiles = [];
+        this.shootCooldown = 60; // 1 shot per second (60 frames)
+        this.shootTimer = 0;
+    }
 
-        // Remove bullets that go off-screen
-        if (bullet.x < 0 || bullet.x > canvas.width || bullet.y < 0 || bullet.y > canvas.height) {
-            bullets.splice(i, 1);
+    findTarget(enemies) {
+        let closestEnemy = null;
+        let closestDistance = Infinity;
+
+        enemies.forEach(enemy => {
+            const dx = enemy.x - this.x;
+            const dy = enemy.y - this.y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            if (distance < closestDistance && distance < this.range) {
+                closestDistance = distance;
+                closestEnemy = enemy;
+            }
+        });
+        return closestEnemy;
+    }
+
+    shoot(target) {
+        if (this.shootTimer <= 0 && target) {
+            this.projectiles.push(new Projectile(this.x, this.y, target));
+            this.shootTimer = this.shootCooldown;
         }
     }
-}
 
-function drawBullets() {
-    bullets.forEach(bullet => {
-        bullet.draw();
-    });
-}
+    update(enemies) {
+        if (this.shootTimer > 0) {
+            this.shootTimer--;
+        }
+        const target = this.findTarget(enemies);
+        this.shoot(target);
 
-
-// Player movement
-const keys = {
-    w: false,
-    a: false,
-    s: false,
-    d: false
-};
-
-window.addEventListener('keydown', (e) => {
-    if (e.key === 'w' || e.key === 'W') keys.w = true;
-    if (e.key === 'a' || e.key === 'A') keys.a = true;
-    if (e.key === 's' || e.key === 'S') keys.s = true;
-    if (e.key === 'd' || e.key === 'D') keys.d = true;
-});
-
-window.addEventListener('keyup', (e) => {
-    if (e.key === 'w' || e.key === 'W') keys.w = false;
-    if (e.key === 'a' || e.key === 'A') keys.a = false;
-    if (e.key === 's' || e.key === 'S') keys.s = false;
-    if (e.key === 'd' || e.key === 'D') keys.d = false;
-});
-
-window.addEventListener('click', (e) => {
-    const rect = canvas.getBoundingClientRect();
-    const mouseX = e.clientX - rect.left;
-    const mouseY = e.clientY - rect.top;
-
-    const angle = Math.atan2(mouseY - player.y, mouseX - player.x);
-    const bulletSpeed = 7;
-    const velocityX = Math.cos(angle) * bulletSpeed;
-    const velocityY = Math.sin(angle) * bulletSpeed;
-    const bulletSize = 5;
-
-    bullets.push(new Bullet(player.x + player.width / 2, player.y + player.height / 2, velocityX, velocityY, bulletSize, 'white'));
-});
-
-function updatePlayerPosition() {
-    if (keys.w && player.y > 0) {
-        player.y -= player.speed;
+        this.projectiles.forEach(p => p.move());
     }
-    if (keys.s && player.y < canvas.height - player.height) {
-        player.y += player.speed;
-    }
-    if (keys.a && player.x > 0) {
-        player.x -= player.speed;
-    }
-    if (keys.d && player.x < canvas.width - player.width) {
-        player.x += player.speed;
+
+    draw() {
+        // Draw tower body
+        ctx.fillStyle = this.color;
+        ctx.fillRect(this.x - this.width/2, this.y - this.height/2, this.width, this.height);
+
+        // Draw name
+        ctx.fillStyle = 'white';
+        ctx.font = '14px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText("Jotaro", this.x, this.y + 5);
+
+        // Draw projectiles
+        this.projectiles.forEach(p => p.draw());
     }
 }
 
-function checkCollisions() {
-    // Bullet-Enemy collision
-    for (let i = bullets.length - 1; i >= 0; i--) {
-        for (let j = enemies.length - 1; j >= 0; j--) {
-            const bullet = bullets[i];
-            const enemy = enemies[j];
+class Enemy {
+    constructor(path) {
+        this.path = path;
+        this.pathIndex = 0;
+        this.x = this.path[0].x;
+        this.y = this.path[0].y;
+        this.width = 40;
+        this.height = 40;
+        this.color = 'yellow'; // Placeholder for Dio
+        this.speed = 2;
+    }
 
-            if (
-                bullet.x < enemy.x + enemy.width &&
-                bullet.x + bullet.width > enemy.x &&
-                bullet.y < enemy.y + enemy.height &&
-                bullet.y + bullet.height > enemy.y
-            ) {
-                // Collision detected
-                bullets.splice(i, 1);
-                enemies.splice(j, 1);
-                score += 10;
+    move() {
+        if (this.pathIndex < this.path.length - 1) {
+            const target = this.path[this.pathIndex + 1];
+            const dx = target.x - this.x;
+            const dy = target.y - this.y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+
+            if (distance < this.speed) {
+                this.pathIndex++;
+            } else {
+                this.x += (dx / distance) * this.speed;
+                this.y += (dy / distance) * this.speed;
             }
         }
     }
 
-    // Player-Enemy collision
-    for (let i = enemies.length - 1; i >= 0; i--) {
-        const enemy = enemies[i];
-        if (
-            player.x < enemy.x + enemy.width &&
-            player.x + player.width > enemy.x &&
-            player.y < enemy.y + enemy.height &&
-            player.y + player.height > enemy.y
-        ) {
-            // Collision detected
-            gameOver = true;
+    draw() {
+        // Draw enemy body
+        ctx.fillStyle = this.color;
+        ctx.fillRect(this.x - this.width / 2, this.y - this.height / 2, this.width, this.height);
+
+        // Draw name
+        ctx.fillStyle = 'black';
+        ctx.font = '14px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText("Dio", this.x, this.y + 5);
+    }
+}
+
+class Game {
+    constructor() {
+        this.path = [
+            { x: 0, y: 100 },
+            { x: 600, y: 100 },
+            { x: 600, y: 400 },
+            { x: 200, y: 400 },
+            { x: 200, y: 550 },
+            { x: 800, y: 550 }
+        ];
+        this.towers = [];
+        this.enemies = [];
+        this.enemies.push(new Enemy(this.path));
+
+        canvas.addEventListener('click', (event) => {
+            this.placeTower(event.offsetX, event.offsetY);
+        });
+    }
+
+    placeTower(x, y) {
+        // For now, we'll just place a tower. In a real game, you'd check for funds, valid placement, etc.
+        this.towers.push(new Tower(x, y));
+    }
+
+    update() {
+        // Update towers and their projectiles
+        this.towers.forEach(tower => tower.update(this.enemies));
+
+        // Update enemies
+        this.enemies.forEach(enemy => enemy.move());
+
+        // Collision detection
+        this.towers.forEach(tower => {
+            tower.projectiles.forEach((projectile, pIndex) => {
+                this.enemies.forEach((enemy, eIndex) => {
+                    const dx = projectile.x - enemy.x;
+                    const dy = projectile.y - enemy.y;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+
+                    if (distance < enemy.width / 2) {
+                        // Hit!
+                        tower.projectiles.splice(pIndex, 1);
+                        this.enemies.splice(eIndex, 1);
+                    }
+                });
+            });
+        });
+    }
+
+    drawPath() {
+        ctx.strokeStyle = '#aaa';
+        ctx.lineWidth = 20;
+        ctx.beginPath();
+        ctx.moveTo(this.path[0].x, this.path[0].y);
+        for (let i = 1; i < this.path.length; i++) {
+            ctx.lineTo(this.path[i].x, this.path[i].y);
         }
+        ctx.stroke();
+    }
+
+    draw() {
+        this.drawPath();
+        this.towers.forEach(tower => tower.draw());
+        this.enemies.forEach(enemy => enemy.draw());
     }
 }
 
-function drawUI() {
-    ctx.fillStyle = 'white';
-    ctx.font = '24px sans-serif';
-    ctx.fillText(`Score: ${score}`, 20, 40);
-    ctx.fillText(`Wave: ${wave}`, canvas.width - 100, 40);
-}
+const game = new Game();
 
+// Game loop
 function gameLoop() {
-    if (gameOver) {
-        ctx.fillStyle = 'white';
-        ctx.font = '48px sans-serif';
-        ctx.fillText('Game Over', canvas.width / 2 - 100, canvas.height / 2);
-        return;
-    }
-
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    updatePlayerPosition();
-    drawPlayer();
-    updateEnemies();
-    drawEnemies();
-    updateBullets();
-    drawBullets();
-    checkCollisions();
-    drawUI();
+
+    game.update();
+    game.draw();
 
     requestAnimationFrame(gameLoop);
 }
 
-spawnWave(wave);
+// Start the game loop
 gameLoop();
