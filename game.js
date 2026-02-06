@@ -19,6 +19,7 @@ const restartButton = document.getElementById('restart');
 const fireButton = document.getElementById('fire-button');
 const touchLeft = document.getElementById('touch-left');
 const touchLeftKnob = document.querySelector('#touch-left .knob');
+const touchRight = document.getElementById('touch-right');
 
 const gameState = {
     player: null,
@@ -324,19 +325,10 @@ function updateKnob(dx, dy) {
     touchLeftKnob.style.transform = `translate(${dx}px, ${dy}px) translate(-50%, -50%)`;
 }
 
-touchLeft.addEventListener('pointerdown', (event) => {
-    if (event.pointerType !== 'touch') return;
-    event.preventDefault();
-    touchOrigin = { x: event.clientX, y: event.clientY };
-    touchMoveVector = { x: 0, y: 0 };
-    updateKnob(0, 0, 1);
-});
-
-touchLeft.addEventListener('pointermove', (event) => {
-    if (!touchOrigin || event.pointerType !== 'touch') return;
-    event.preventDefault();
-    const deltaX = event.clientX - touchOrigin.x;
-    const deltaY = event.clientY - touchOrigin.y;
+function handleTouchMove(clientX, clientY) {
+    if (!touchOrigin) return;
+    const deltaX = clientX - touchOrigin.x;
+    const deltaY = clientY - touchOrigin.y;
     const maxDistance = 50;
     const distance = Math.min(maxDistance, Math.hypot(deltaX, deltaY));
     const angle = Math.atan2(deltaY, deltaX);
@@ -344,13 +336,27 @@ touchLeft.addEventListener('pointermove', (event) => {
         x: (Math.cos(angle) * distance) / maxDistance,
         y: (Math.sin(angle) * distance) / maxDistance
     };
-    updateKnob(touchMoveVector.x * 40, touchMoveVector.y * 40, maxDistance);
+    updateKnob(touchMoveVector.x * 40, touchMoveVector.y * 40);
+}
+
+touchLeft.addEventListener('pointerdown', (event) => {
+    if (event.pointerType !== 'touch') return;
+    event.preventDefault();
+    touchOrigin = { x: event.clientX, y: event.clientY };
+    touchMoveVector = { x: 0, y: 0 };
+    updateKnob(0, 0);
+});
+
+touchLeft.addEventListener('pointermove', (event) => {
+    if (!touchOrigin || event.pointerType !== 'touch') return;
+    event.preventDefault();
+    handleTouchMove(event.clientX, event.clientY);
 });
 
 function releaseTouchMove() {
     touchOrigin = null;
     touchMoveVector = { x: 0, y: 0 };
-    updateKnob(0, 0, 1);
+    updateKnob(0, 0);
 }
 
 touchLeft.addEventListener('pointerup', (event) => {
@@ -381,6 +387,37 @@ canvas.addEventListener('pointermove', (event) => {
     }
 });
 
+touchLeft.addEventListener('touchstart', (event) => {
+    event.preventDefault();
+    const touch = event.changedTouches[0];
+    touchOrigin = { x: touch.clientX, y: touch.clientY };
+    touchMoveVector = { x: 0, y: 0 };
+    updateKnob(0, 0);
+}, { passive: false });
+
+touchLeft.addEventListener('touchmove', (event) => {
+    event.preventDefault();
+    const touch = event.changedTouches[0];
+    handleTouchMove(touch.clientX, touch.clientY);
+}, { passive: false });
+
+touchLeft.addEventListener('touchend', (event) => {
+    event.preventDefault();
+    releaseTouchMove();
+}, { passive: false });
+
+touchRight.addEventListener('touchstart', (event) => {
+    event.preventDefault();
+    const touch = event.changedTouches[0];
+    updateAim(touch.clientX, touch.clientY);
+}, { passive: false });
+
+touchRight.addEventListener('touchmove', (event) => {
+    event.preventDefault();
+    const touch = event.changedTouches[0];
+    updateAim(touch.clientX, touch.clientY);
+}, { passive: false });
+
 let firePressed = false;
 
 fireButton.addEventListener('pointerdown', (event) => {
@@ -395,6 +432,16 @@ fireButton.addEventListener('pointerup', () => {
 fireButton.addEventListener('pointercancel', () => {
     firePressed = false;
 });
+
+fireButton.addEventListener('touchstart', (event) => {
+    event.preventDefault();
+    firePressed = true;
+}, { passive: false });
+
+fireButton.addEventListener('touchend', (event) => {
+    event.preventDefault();
+    firePressed = false;
+}, { passive: false });
 
 fireButton.addEventListener('mousedown', () => {
     firePressed = true;
