@@ -18,6 +18,7 @@ const finalScore = document.getElementById('final-score');
 const restartButton = document.getElementById('restart');
 const fireButton = document.getElementById('fire-button');
 const touchLeft = document.getElementById('touch-left');
+const touchLeftKnob = document.querySelector('#touch-left .knob');
 
 const gameState = {
     player: null,
@@ -318,51 +319,80 @@ function updateAim(clientX, clientY) {
 let touchMoveVector = { x: 0, y: 0 };
 let touchOrigin = null;
 
-canvas.addEventListener('touchstart', (event) => {
-    Array.from(event.changedTouches).forEach((touch) => {
-        if (touch.clientX < window.innerWidth / 2) {
-            touchOrigin = { x: touch.clientX, y: touch.clientY };
-        } else {
-            updateAim(touch.clientX, touch.clientY);
-        }
-    });
-}, { passive: true });
+function updateKnob(dx, dy) {
+    if (!touchLeftKnob) return;
+    touchLeftKnob.style.transform = `translate(${dx}px, ${dy}px) translate(-50%, -50%)`;
+}
 
-canvas.addEventListener('touchmove', (event) => {
-    Array.from(event.changedTouches).forEach((touch) => {
-        if (touchOrigin && touch.clientX < window.innerWidth / 2) {
-            const deltaX = touch.clientX - touchOrigin.x;
-            const deltaY = touch.clientY - touchOrigin.y;
-            const maxDistance = 50;
-            const distance = Math.min(maxDistance, Math.hypot(deltaX, deltaY));
-            const angle = Math.atan2(deltaY, deltaX);
-            touchMoveVector = {
-                x: (Math.cos(angle) * distance) / maxDistance,
-                y: (Math.sin(angle) * distance) / maxDistance
-            };
-        } else {
-            updateAim(touch.clientX, touch.clientY);
-        }
-    });
-}, { passive: true });
+touchLeft.addEventListener('pointerdown', (event) => {
+    if (event.pointerType !== 'touch') return;
+    event.preventDefault();
+    touchOrigin = { x: event.clientX, y: event.clientY };
+    touchMoveVector = { x: 0, y: 0 };
+    updateKnob(0, 0, 1);
+});
 
-canvas.addEventListener('touchend', (event) => {
-    Array.from(event.changedTouches).forEach((touch) => {
-        if (touchOrigin && touch.clientX < window.innerWidth / 2) {
-            touchOrigin = null;
-            touchMoveVector = { x: 0, y: 0 };
-        }
-    });
-}, { passive: true });
+touchLeft.addEventListener('pointermove', (event) => {
+    if (!touchOrigin || event.pointerType !== 'touch') return;
+    event.preventDefault();
+    const deltaX = event.clientX - touchOrigin.x;
+    const deltaY = event.clientY - touchOrigin.y;
+    const maxDistance = 50;
+    const distance = Math.min(maxDistance, Math.hypot(deltaX, deltaY));
+    const angle = Math.atan2(deltaY, deltaX);
+    touchMoveVector = {
+        x: (Math.cos(angle) * distance) / maxDistance,
+        y: (Math.sin(angle) * distance) / maxDistance
+    };
+    updateKnob(touchMoveVector.x * 40, touchMoveVector.y * 40, maxDistance);
+});
+
+function releaseTouchMove() {
+    touchOrigin = null;
+    touchMoveVector = { x: 0, y: 0 };
+    updateKnob(0, 0, 1);
+}
+
+touchLeft.addEventListener('pointerup', (event) => {
+    if (event.pointerType !== 'touch') return;
+    event.preventDefault();
+    releaseTouchMove();
+});
+
+touchLeft.addEventListener('pointercancel', (event) => {
+    if (event.pointerType !== 'touch') return;
+    event.preventDefault();
+    releaseTouchMove();
+});
+
+canvas.addEventListener('pointerdown', (event) => {
+    if (event.pointerType !== 'touch') return;
+    if (event.clientX > window.innerWidth / 2) {
+        event.preventDefault();
+        updateAim(event.clientX, event.clientY);
+    }
+});
+
+canvas.addEventListener('pointermove', (event) => {
+    if (event.pointerType !== 'touch') return;
+    if (event.clientX > window.innerWidth / 2) {
+        event.preventDefault();
+        updateAim(event.clientX, event.clientY);
+    }
+});
 
 let firePressed = false;
 
-fireButton.addEventListener('touchstart', (event) => {
+fireButton.addEventListener('pointerdown', (event) => {
     event.preventDefault();
     firePressed = true;
-}, { passive: false });
+});
 
-fireButton.addEventListener('touchend', () => {
+fireButton.addEventListener('pointerup', () => {
+    firePressed = false;
+});
+
+fireButton.addEventListener('pointercancel', () => {
     firePressed = false;
 });
 
