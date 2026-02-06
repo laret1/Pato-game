@@ -2,13 +2,83 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Duck Survival Game</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Duck Survival: Waves</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <h1>Duck Survival</h1>
-    <canvas id="gameCanvas" width="800" height="600"></canvas>
+    <div id="game-container">
+        <header class="title-bar">
+            <h1>Duck Survival</h1>
+            <p>Survival por oleadas con clases, mejoras y tienda.</p>
+        </header>
+
+        <div id="hud">
+            <div class="hud-item">Clase: <span id="hud-class">-</span></div>
+            <div class="hud-item">Vida: <span id="hud-health">0</span>/<span id="hud-max-health">0</span></div>
+            <div class="hud-item">Monedas: <span id="hud-coins">0</span></div>
+            <div class="hud-item">Oleada: <span id="hud-wave">1</span></div>
+            <div class="hud-item">Puntuación: <span id="hud-score">0</span></div>
+        </div>
+
+        <div id="canvas-wrap">
+            <canvas id="gameCanvas"></canvas>
+            <div id="touch-left" class="touch-zone">
+                <div class="stick"></div>
+                <div class="knob"></div>
+            </div>
+            <div id="touch-right" class="touch-zone">
+                <button id="fire-button">FUEGO</button>
+            </div>
+        </div>
+
+        <div id="class-screen" class="overlay active">
+            <div class="panel">
+                <h2>Elige tu clase</h2>
+                <p>Cada clase tiene ventajas para sobrevivir más oleadas.</p>
+                <div class="class-grid">
+                    <button class="class-card" data-class="Scout">
+                        <h3>Scout</h3>
+                        <p>Más velocidad y cadencia. Vida media.</p>
+                    </button>
+                    <button class="class-card" data-class="Guardian">
+                        <h3>Guardian</h3>
+                        <p>Vida alta y armadura. Dispara más lento.</p>
+                    </button>
+                    <button class="class-card" data-class="Gunner">
+                        <h3>Gunner</h3>
+                        <p>Daño alto y balas rápidas. Menos movilidad.</p>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div id="shop-screen" class="overlay">
+            <div class="panel">
+                <h2>Tienda de mejoras</h2>
+                <p>Compra mejoras antes de la siguiente oleada.</p>
+                <div id="shop-items" class="shop-grid"></div>
+                <div class="shop-actions">
+                    <button id="next-wave">Iniciar oleada</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="game-over" class="overlay">
+            <div class="panel">
+                <h2>Game Over</h2>
+                <p>Oleadas superadas: <span id="final-wave">0</span></p>
+                <p>Puntuación total: <span id="final-score">0</span></p>
+                <button id="restart">Reiniciar</button>
+            </div>
+        </div>
+
+        <footer class="controls">
+            <p><strong>PC:</strong> WASD para moverte, clic para disparar.</p>
+            <p><strong>Android:</strong> usa el joystick izquierdo para moverte y el botón FUEGO para disparar.</p>
+        </footer>
+    </div>
+
     <script src="game.js"></script>
 </body>
 </html>
